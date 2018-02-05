@@ -10,7 +10,7 @@ animations.  I welcome contributions.
 Requirements
 ---------------
 
-1. Ruby 2.1.1
+1. Ruby 2.4.1
 2. Smattering of ruby gems, including Sinatra, Rack
 
 Running the Tool

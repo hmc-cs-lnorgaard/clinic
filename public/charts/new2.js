@@ -117,7 +117,8 @@ function drawCircles(div) {
         .padding(2);
 
     var root = d3.hierarchy(pageHierarchy[0])
-              .sum(function(d) { return (d.end - d.start); })
+              .sum(function(d) { return ((d.end + d.start)/2.0); })
+              .sort(function(a, b) { return b.start - a.start;); })
               .sort(function(a, b) { return b.start - a.start; });
 
     var focus = root,
