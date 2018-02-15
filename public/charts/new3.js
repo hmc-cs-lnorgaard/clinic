@@ -1,17 +1,3 @@
-/**
-
-TODO: fix data so that start and end works for every json file, not just some
-
-1) The data is in the JSON file we clicked on
-2) We want to reorganize the data in the JSON file in a few ways:
-    a) Create a list of the pages (URLs) that have requests: allPages
-    b) Create a dictionary with pages as keys and the requests as values: nodesByPage
-    c) Create a hierarchy of pages: pageHierarchy
-3) To create a circle packing visualization, we want to recursively create circles
-    within each other using the hierarchy. The size of the circle depends on the start
-    and end time of the request.
-
-*/
 titles = {"epochtime":0,"timestamp":1,"duration":2,"name":3,"name.previous":4,"country":5,"city":6}
 numRequests = 0
 
@@ -22,7 +8,7 @@ var height = 900 - margin.top - margin.bottom;
 var padding = 20;
 
 // Our data structures
-var pageHierarchy = [];
+var cityHierarchy = [];
 var nodesByCity = {};
 var stream;
 
@@ -53,20 +39,20 @@ function addDataToHierarchy(dict) {
 }
 
 
-/** Empties and repopulates nodesByPage dictionary 
-        newData: all the data, formatted like the json file
-        nodesByPage: dictionary of all the requests data with pages as keys
+/** The main function. 
+    1) Loops through the data from the json file once to create the necessary data structures.
+    2) Loops through again to again to create the hierarchy for D3 visualization
 */
 function formatData(newData) {
     numRequests = newData.length
     console.log("num requests = ", numRequests);
 
     // Initialize the hierarchy
-    pageHierarchy = [];
-    pageHierarchy[0] = {};
-    pageHierarchy[0]["name"] = "app";
-    pageHierarchy[0]["children"] = [];
-    var currentLevel = pageHierarchy[0]["children"];
+    cityHierarchy = [];
+    cityHierarchy[0] = {};
+    cityHierarchy[0]["name"] = "app";
+    cityHierarchy[0]["children"] = [];
+    var currentLevel = cityHierarchy[0]["children"];
 
     // Create a list of all countries, create a list of all cities, and create a dictionary
     // with cities as keys and countries as values
@@ -103,11 +89,6 @@ function formatData(newData) {
         }
     }
 
-    console.log("countries: ", allCountries);
-    console.log("cities: ", allCities);
-    console.log("cityCountryDict: ", cityCountryDict);
-    console.log("nodesByCity: ", nodesByCity)
-
     // Add the countries to the hierarchy
     for (co = 0; co < allCountries.length; co++) {
         currCountry = allCountries[co]
@@ -124,13 +105,14 @@ function formatData(newData) {
                 var newDict2 = {};
                 newDict2["name"] = city;
                 newDict2["children"] = [];
+
+                // Add individual data points to the hierarchy 
                 addDataToHierarchy(newDict2)
                 innerLevel.push(newDict2);
             }
         }
         currentLevel.push(newDict);
     }
-    console.log("pageHierarchy: ", pageHierarchy);
 }
 
 
@@ -156,7 +138,8 @@ function drawCircles(div) {
         .size([diameter - margin, diameter - margin])
         .padding(2);
 
-    var root = d3.hierarchy(pageHierarchy[0])
+    // Choose cityHierarchy as our source of data and make the circle sizes equal to request duration
+    var root = d3.hierarchy(cityHierarchy[0])
               .sum(function(d) { return d.duration; })
               .sort(function(a, b) { return b.start - a.start; });
 
