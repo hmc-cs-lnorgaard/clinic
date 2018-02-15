@@ -1,23 +1,10 @@
-/**
-
-TODO: fix data so that start and end works for every json file, not just some
-
-1) The data is in the JSON file we clicked on
-2) We want to reorganize the data in the JSON file in a few ways:
-    a) Create a list of the pages (URLs) that have requests: allPages
-    b) Create a dictionary with pages as keys and the requests as values: nodesByPage
-    c) Create a hierarchy of pages: pageHierarchy
-3) To create a circle packing visualization, we want to recursively create circles
-    within each other using the hierarchy. The size of the circle depends on the start
-    and end time of the request.
-
-*/
+titles = {"epochtime":0,"timestamp":1,"duration":2,"name":3,"name.previous":4,"country":5,"city":6}
 
 
 // Settings for svg/d3 stuff
 var margin = $data.margin;
-var width = 900 - margin.left - margin.right;
-var height = 900 - margin.top - margin.bottom;
+var width = 700 - margin.left - margin.right;
+var height = 700 - margin.top - margin.bottom;
 var padding = 20;
 
 // Our data structures
@@ -25,14 +12,14 @@ var allPages = [];
 var nodesByPage = []; 
 var pageHierarchy = [];
 var stream;
+var portionOfData = 30;
 
 
-function initTraffic(div) {
-    console.log("here");
+function initTraffic(div,json) {
     if (stream == null) {
-        console.log("null");
         return;
     }
+    formatData(json);
     drawCircles(div);
 }
 
@@ -42,15 +29,14 @@ function initTraffic(div) {
         nodesByPage: dictionary of all the requests data with pages as keys
 */
 function formatData(newData) {
-    console.log("here??");
     pageHierarchy = [];
     pageHierarchy[0] = {};
     pageHierarchy[0]["name"] = "app";
     pageHierarchy[0]["children"] = [];
     var currentLevel = pageHierarchy[0]["children"];
 
-    for (i = 0; i < newData.length; i++) {
-        var pageName = newData[i][dimensionIndex];
+    for (i = 0; i < newData.length/portionOfData; i++) {
+        var pageName = newData[i][titles["name"]];
         var notDone = true; 
         var levelSize = currentLevel.length;  
         var currIndex = 0;    
@@ -63,10 +49,10 @@ function formatData(newData) {
             if (currDict["name"] == pageName) { 
                 var children = currDict["children"]; 
                 var newEntry = {};
-                console.log("start: ", newData[i][2]);
-                newEntry["start"] = newData[i][2];
-                newEntry["end"] = newData[i][1];
-                newEntry["name"] = (newEntry["start"]).toString();
+                for (t in titles) {
+                    newEntry[t] = newData[i][titles[t]];
+                }
+                newEntry["name"] = (newEntry["duration"]).toString();
                 children.push(newEntry);
                 notDone = false;
             } 
@@ -83,9 +69,10 @@ function formatData(newData) {
             newDict["children"] = [];
 
             var newEntry = {};
-            newEntry["start"] = newData[i][2];
-            newEntry["end"] = newData[i][1];
-            newEntry["name"] = (newEntry["start"]).toString();
+            for (t in titles) {
+                newEntry[t] = newData[i][titles[t]];
+            }
+            newEntry["name"] = (newEntry["duration"]).toString();
             newDict["children"].push(newEntry);
             currentLevel.push(newDict);
         }
@@ -117,8 +104,8 @@ function drawCircles(div) {
         .padding(2);
 
     var root = d3.hierarchy(pageHierarchy[0])
-              .sum(function(d) { return ((d.end + d.start)/2.0); })
-              .sort(function(a, b) { return b.start - a.start; });
+              .sum(function(d) { return d.duration; })
+              .sort(function(a, b) { return b.duration - a.duration; });
 
     var focus = root,
         nodes = pack(root).descendants(),
@@ -174,19 +161,17 @@ function drawCircles(div) {
 
 
 // This is our main function that calls all the helper functions
-function updateTraffic(error, json, div, dimensionIndex) {
-    console.log("here?");
+function updateTraffic(error, json, div) {
     if (error) {
         readout(error);
     } else {
-      console.log("here?????");
         var now = new Date().getTime();
-        div.node().stream = {dimension: dimensionIndex, start: now, wall: now, sleep: 0, first: json[0][0], last: json[json.length-1][0], index: 0, data: json};
+        div.node().stream = {dimension: titles["name"], start: now, wall: now, sleep: 0, first: json[0][0], last: json[json.length-1][0], index: 0, data: json};
         stream = div.node().stream;
 
         d3.selectAll("svg").remove();
-        formatData(json);
-        setInterval(initTraffic(div), 1000);
+        
+        setInterval(initTraffic(div, json), 1000);
 
     }
 }

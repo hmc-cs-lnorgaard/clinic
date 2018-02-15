@@ -1,23 +1,10 @@
-/**
-
-TODO: fix data so that start and end works for every json file, not just some
-
-1) The data is in the JSON file we clicked on
-2) We want to reorganize the data in the JSON file in a few ways:
-    a) Create a list of the pages (URLs) that have requests: allPages
-    b) Create a dictionary with pages as keys and the requests as values: nodesByPage
-    c) Create a hierarchy of pages: pageHierarchy
-3) To create a circle packing visualization, we want to recursively create circles
-    within each other using the hierarchy. The size of the circle depends on the start
-    and end time of the request.
-
-*/
+titles = {"epochtime":0,"timestamp":1,"duration":2,"name":3,"name.previous":4,"country":5,"city":6}
 
 
 // Settings for svg/d3 stuff
 var margin = $data.margin;
-var width = 900 - margin.left - margin.right;
-var height = 900 - margin.top - margin.bottom;
+var width = 700 - margin.left - margin.right;
+var height = 700 - margin.top - margin.bottom;
 var padding = 20;
 
 // Our data structures
@@ -25,12 +12,20 @@ var allPages = [];
 var nodesByPage = []; 
 var pageHierarchy = [];
 var stream;
+var portionOfData = 30; // how many pieces we are dividing our data into
 
 
-function initTraffic(div) {
+function initTraffic(div, json) {
     if (stream == null) {
         return;
     }
+    // Organize all the data structures
+    getAllPages(json);
+    formatData(json);
+    sortPagesAlphabetically();
+    createHierarchy();
+    
+    // Draw the circles with D3
     drawCircles(div);
 }
 
@@ -41,8 +36,8 @@ function initTraffic(div) {
 */
 function formatData(newData) {
     nodesByPage = [];
-    for (i = 0; i < newData.length; i++) {
-        var pageName = newData[i][dimensionIndex];
+    for (i = 0; i < newData.length/portionOfData; i++) {
+        var pageName = newData[i][titles["name"]];
         if (nodesByPage[pageName] == null) {
             nodesByPage[pageName] = [];
             nodesByPage[pageName].push(newData[i]);
@@ -55,13 +50,12 @@ function formatData(newData) {
 /** Empties and repopulates allPages dictionary 
         allPages: an array of all the pages in the app
         json: the data 
-        dimensionIndex: the index in the json data of the page name
 */
-function getAllPages(json, dimensionIndex) {
+function getAllPages(json) {
     allPages = [];
-    for (i = 0; i < json.length; i++) {
-        if (allPages.indexOf(json[i][dimensionIndex]) <= -1) {
-            allPages.push(json[i][dimensionIndex]);
+    for (i = 0; i < json.length/portionOfData; i++) {
+        if (allPages.indexOf(json[i][titles["name"]]) <= -1) {
+            allPages.push(json[i][titles["name"]]);
         }
     }
 }
@@ -144,9 +138,10 @@ function addDataToHierarchy(dict) {
     for (var i = 0; i < data.length; i++) {
         var d = data[i];
         var newEntry = {};
-        newEntry["start"] = d[2];
-        newEntry["end"] = d[1];
-        newEntry["name"] = (newEntry["start"]).toString();
+        for (t in titles) {
+            newEntry[t] = d[titles[t]];
+        }
+        newEntry["name"] = (newEntry["duration"]).toString();
         children.push(newEntry);
     }
 
@@ -176,8 +171,8 @@ function drawCircles(div) {
         .padding(2);
 
     var root = d3.hierarchy(pageHierarchy[0])
-              .sum(function(d) { return ((d.end + d.start)/2.0); })
-              .sort(function(a, b) { return b.start - a.start; });
+              .sum(function(d) { return d.duration; })
+              .sort(function(a, b) { return b.duration - a.duration; });
 
     var focus = root,
         nodes = pack(root).descendants(),
@@ -233,31 +228,17 @@ function drawCircles(div) {
 
 
 // This is our main function that calls all the helper functions
-function updateTraffic(error, json, div, dimensionIndex) {
+function updateTraffic(error, json, div) {
     if (error) {
         readout(error);
     } else {
         var now = new Date().getTime();
-        div.node().stream = {dimension: dimensionIndex, start: now, wall: now, sleep: 0, first: json[0][0], last: json[json.length-1][0], index: 0, data: json};
+        div.node().stream = {dimension: titles["name"], start: now, wall: now, sleep: 0, first: json[0][0], last: json[json.length-1][0], index: 0, data: json};
         stream = div.node().stream;
 
         d3.selectAll("svg").remove();
 
-        getAllPages(json, dimensionIndex);
-        formatData(json);
-        sortPagesAlphabetically();
-        console.log("allPages: ", allPages);
-        console.log("nodesByPage: ", nodesByPage);
-
-        /* At this point, we have a list of all the pages in the app (sorted alphabetically), and
-        we have a dictionary of all the requests (the keys are the pages and the values are the requests) */
-
-        createHierarchy();
-        console.log("hierarchy: ", pageHierarchy);
-
-        /* At this point, we have created a hierarchy of the pages using the urls */
-
-        setInterval(initTraffic(div), 1000);
+        setInterval(initTraffic(div,json), 1000);
 
         // To access nodes from one page:
         // nodesByPage[allPages[i]]

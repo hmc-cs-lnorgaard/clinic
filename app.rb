@@ -81,7 +81,7 @@ helpers do
     @density = (params[:density] || 60).to_i
     @filter_label = params[:filter] if params[:filter] && !params[:filter].empty?
     @only = @filter_label.nil? || params[:only] != "0"
-    @file = params[:file] || params[:filename] || "nr-deploy.json"
+    @file = params[:file] || params[:filename] || "rpmui-events-extended-2018-02-07.json"
     @log_transform = params[:log] == "1"
   end
 

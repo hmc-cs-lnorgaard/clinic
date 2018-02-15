@@ -11,13 +11,19 @@ var padding = 20;
 var cityHierarchy = [];
 var nodesByCity = {};
 var stream;
+var index = 0;
 
 
 function initTraffic(div, json) {
+    console.log("here");
     if (stream == null) {
+        console.log("null");
         return;
     }
+    console.log("hi");
+    formatData(json);
     drawCircles(div);
+    index = index + 100;
 }
 
 // Given a list of requests from the same city, add them to the hierarchy
@@ -63,7 +69,7 @@ function formatData(newData) {
     var allCities = [];
     var cityCountryDict = {};
 
-    for (i = 0; i < newData.length/30; i++) {
+    for (i = index; i < index + newData.length/30; i++) {
         var city = newData[i][titles["city"]]
         var country = newData[i][titles["country"]]
 
@@ -210,8 +216,10 @@ function updateTraffic(error, json, div, dimensionIndex) {
 
         d3.selectAll("svg").remove();
 
-        formatData(json);
-        setInterval(initTraffic(div, json), 1000);
+        setTimeout(function run() {
+            initTraffic(div, json);
+            setTimeout(run, 1000);
+        }, 1000);
 
     }
 }
