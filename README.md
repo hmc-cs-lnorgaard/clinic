@@ -25,19 +25,14 @@ Adding your own dataset
 ----------------
 Just add json files to the data directory using the following format:
 
-     [
-     [ "timestamp", "transaction", "frontend", "backend"],
-     [1368817694170, "Controller/applications/show", 2599.0, 1067.0],
-     [1368817694231, "Controller/public_access/charts/show", 277.0, 166.0],
-     [1368817694240, "Controller/applications/index", 1517.0, 983.0],
-     [1368817694260, "Controller/traced_errors/index", 1188.0, 725.0],
+     [ 
+     ["epochtime", "timestamp", "duration", "name", "name.previous", "country", "city"],
+     [1518064243, "2018-02-07 20:30:43 -0800", 14.275, "Controller/applications/show", "Controller/applications/show", "NZ", "Wellington"],
+     [1518064243, "2018-02-07 20:30:43 -0800", 8.79, "Controller/named_transactions/index", "Controller/applications/problems", "BR", "Sao Paulo"],
+     [1518064243, "2018-02-07 20:30:43 -0800", 14.668, "Controller/applications/show", "Controller/applications/show", "US", "Los Angeles"],
      ....
 
-The columns can be in any order, but must include `timestamp`, `transaction` and one of
-`frontend` or `backend`.  They can include additional per-event dimensions which may be
-utilized in some experiments as alternatives to `transaction`.
-
-For details on the format, refer to the [readme.md](data/readme.md) file in the data directory.
+The columns must include ["epochtime", "timestamp", "duration", "name", "name.previous", "country", "city"] and in that order.
 
 
 Changes
