@@ -162,8 +162,7 @@ function drawCircles(div) {
         .transition()
            .duration(duration)
            .delay(function(d, i) {delay = i * 7; return delay;})
-           .attr('transform', function(d) { return 'translate(' + d.x + ','
-              + d.y + ')'; })
+           .attr('transform', function(d) { return 'translate(' + (d.x - width/2) + ',' + (d.y - width/2) + ')'; })
            .attr('r', function(d) { return d.r; })
         .exit()
            .transition()
