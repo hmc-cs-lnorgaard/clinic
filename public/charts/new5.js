@@ -5,9 +5,10 @@ numRequests = 0
 var margin = {top: 10, right: 20, bottom: 30, left: 60},
     width = 960 - margin.left - margin.right,
     height = 450 - margin.top - margin.bottom,
-    color = d3.scale.category10(),
+    color = d3.scale.category20b(),
     n = d3.format(",.0f"),
     p = d3.format("%");
+
 
 var index = 0; // start at the record after the header
 var serialId = 1000; // Serial id assigned to each event
@@ -137,8 +138,8 @@ function chart(selection) {
             .attr("width", function(d) { return d.dx; })
             .attr("height", function(d) { return d.dy; });
 
-        /*cell.select("title")
-            .text(function(d) { return d.children ? null : title(d); });*/
+        cell.select("title")
+            .text(function(d) { return d.children ? null : title(d); });
 
         d3.transition(cell.exit())
             .attr("width", 1e-6)
@@ -148,7 +149,7 @@ function chart(selection) {
 }
 
 function title(d) {
-    return d.segment + ": " + d.parent.key + ": " + n(d.value);
+    return d.segment;
 }
 
 // update the graph every 50 points
