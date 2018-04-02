@@ -151,7 +151,7 @@ function chart(selection) {
 }
 
 function title(d) {
-    return d.segment;
+    return d.market + ", " + d.segment + ", " + d.value;
 }
 
 // update the graph every 50 points
