@@ -3,9 +3,12 @@ numRequests = 0
 
 // Default size & coloring settings from Marimekko demo: https://www.jasondavies.com/mekko/
 var margin = {top: 10, right: 20, bottom: 30, left: 60},
-    width = 960 - margin.left - margin.right,
-    height = 450 - margin.top - margin.bottom,
+    width = 1200 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom,
     color = d3.scale.category20b(),
+    /**color = d3.scale.ordinal()
+        .domain(["1450"])
+        .range(["#1a9850", "#66bd63", "#a6d96a","#d9ef8b","#ffffbf","#fee08b","#fdae61","#f46d43","#d73027"]),*/
     n = d3.format(",.0f"),
     p = d3.format("%");
 
@@ -27,9 +30,9 @@ function initTraffic(div, json) {
 function addPage(page) {
     if (notInitialized) {
         for (i=0; i<json1.length; i++) {
-            var feature1 = json1[i][titles["country"]];
+            var feature1 = json1[i][titles["name"]];
             if (feature1 == null) {feature1 = "null";}
-            var feature2 = json1[i][titles["city"]];
+            var feature2 = json1[i][titles["country"]];
             if (feature2 == null) {feature2 = "null";}
             
             var newString = feature1.concat(feature2);
@@ -52,9 +55,9 @@ function addPage(page) {
     }
 
     // Make sure none of the feature values are null
-    var feature1 = page[titles["country"]];
+    var feature1 = page[titles["name"]];
     if (feature1 == null) {feature1 = "null";}
-    var feature2 = page[titles["city"]];
+    var feature2 = page[titles["country"]];
     if (feature2 == null) {feature2 = "null";}
     var feature3 = page[titles["duration"]];
     if (feature3 == null) {return;}
@@ -99,12 +102,11 @@ function buildView(div) {
     svg = d3.select("body").append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
-        .style("margin-left", -margin.left + "px")
-    
-    svg.append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-        .datum({values: nest.entries(data)})
-        .call(chart);
+        .style("margin-left", margin.left + "px")
+        .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .datum({values: nest.entries(data)})
+            .call(chart);
 
     svg.append("g")
         .attr("class", "x axis")
@@ -128,7 +130,7 @@ function chart(selection) {
             .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
         cellEnter.filter(function(d) { return d.depth > 2; }).append("rect")
-            .style("fill", function(d) { return d.children ? null : color(d.market); });
+            .style("fill", function(d) { return d.children ? null : color(d.segment); });
 
         cellEnter.append("title");
 
