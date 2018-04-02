@@ -1,231 +1,172 @@
 titles = {"epochtime":0,"timestamp":1,"duration":2,"name":3,"name.previous":4,"country":5,"city":6}
 numRequests = 0
 
-// Settings for svg/d3 stuff
-var margin = $data.margin;
-var width = 700 - margin.left - margin.right;
-var height = 700 - margin.top - margin.bottom;
-var padding = 20;
+// Default size & coloring settings from Marimekko demo: https://www.jasondavies.com/mekko/
+var margin = {top: 10, right: 20, bottom: 30, left: 60},
+    width = 960 - margin.left - margin.right,
+    height = 450 - margin.top - margin.bottom,
+    color = d3.scale.category10(),
+    n = d3.format(",.0f"),
+    p = d3.format("%");
 
-// Our data structures
-var cityHierarchy = [];
-var nodesByCity = {};
-var stream;
+var index = 0; // start at the record after the header
+var serialId = 1000; // Serial id assigned to each event
+var data = []; // where we are keeping the list of dictionaries (our data)
+var featureIndices = {};
+var notInitialized = true;
+var json1 = null;
 
 
+// Changed this so it's only called once. 
 function initTraffic(div, json) {
-    if (stream == null) {
-        return;
-    }
-    drawCircles(div);
+    buildView(div);
 }
 
-// Given a list of requests from the same city, add them to the hierarchy
-function addDataToHierarchy(dict) {
-    var name = dict["name"];
-    var children = dict["children"]; 
-    var data = nodesByCity[name];
-    for (var i = 0; i < data.length; i++) {
-        var d = data[i];
-        var newEntry = {};
-        for (t in titles) {
-            newEntry[t] = d[titles[t]];
-        }
-        newEntry["name"] = (newEntry["duration"]).toString();
-        children.push(newEntry);
-    }
-}
+// Create a new entry that is properly formatted and add it to the list holding current data
+function addPage(page) {
+    if (notInitialized) {
+        for (i=0; i<json1.length; i++) {
+            var feature1 = json1[i][titles["country"]];
+            if (feature1 == null) {feature1 = "null";}
+            var feature2 = json1[i][titles["city"]];
+            if (feature2 == null) {feature2 = "null";}
+            
+            var newString = feature1.concat(feature2);
 
-
-/** The main function. 
-    1) Loops through the data from the json file once to create the necessary data structures.
-    2) Loops through again to again to create the hierarchy for D3 visualization
-*/
-function formatData(newData) {
-
-    // Reset data structures
-    cityHierarchy = [];
-    nodesByCity = {};
-
-    numRequests = newData.length
-    console.log("num requests = ", numRequests);
-
-    // Initialize the hierarchy
-    cityHierarchy = [];
-    cityHierarchy[0] = {};
-    cityHierarchy[0]["name"] = "app";
-    cityHierarchy[0]["children"] = [];
-    var currentLevel = cityHierarchy[0]["children"];
-
-    // Create a list of all countries, create a list of all cities, and create a dictionary
-    // with cities as keys and countries as values
-    var allCountries = [];
-    var allCities = [];
-    var cityCountryDict = {};
-
-    for (i = 0; i < newData.length/30; i++) {
-        var city = newData[i][titles["city"]]
-        var country = newData[i][titles["country"]]
-
-        // List of countries
-        if (allCountries.indexOf(country) <= -1) {
-            allCountries.push(country);
-        }
-
-        // List of cities
-        if (allCities.indexOf(city) <= -1) {
-            allCities.push(city);
-        }
-
-        // Dictionary (key=city, value=country)
-        var currentKeys = Object.keys(cityCountryDict)
-        if ((city in currentKeys) == false) {
-            cityCountryDict[city] = country
-        }
-
-        // Dictionary (key=city, value=list of requests from that city)
-        if (nodesByCity[city] == null) {
-            nodesByCity[city] = [];
-            nodesByCity[city].push(newData[i]);
-        } else {
-            nodesByCity[city].push(newData[i]);
-        }
-    }
-
-    // Add the countries to the hierarchy
-    for (co = 0; co < allCountries.length; co++) {
-        currCountry = allCountries[co]
-        var newDict = {};
-        newDict["name"] = currCountry;
-        newDict["children"] = [];
-        innerLevel = newDict["children"]
-
-        // Add the cities to the hierarchy
-        for (ci = 0; ci < allCities.length; ci++) {
-            city = allCities[ci]
-            country = cityCountryDict[city]
-            if (country == currCountry) {
-                var newDict2 = {};
-                newDict2["name"] = city;
-                newDict2["children"] = [];
-
-                // Add individual data points to the hierarchy 
-                addDataToHierarchy(newDict2)
-                innerLevel.push(newDict2);
+            if (newString in featureIndices) {
+                // do nothing
+            } else {
+                var pageNode = {
+                    id: String(serialId++),
+                    market: feature1,
+                    segment: feature2,
+                    value: 0
+                }
+                var newIndexForDictionary = data.length;
+                featureIndices[newString] = newIndexForDictionary;
+                data[newIndexForDictionary] = pageNode;
             }
         }
-        currentLevel.push(newDict);
+        notInitialized = false;
     }
-}
 
+    // Make sure none of the feature values are null
+    var feature1 = page[titles["country"]];
+    if (feature1 == null) {feature1 = "null";}
+    var feature2 = page[titles["city"]];
+    if (feature2 == null) {feature2 = "null";}
+    var feature3 = page[titles["duration"]];
+    if (feature3 == null) {return;}
+    
+    var newString = feature1.concat(feature2);
 
-
-function drawCircles(div) {
-
-    var bodySelection = d3.select("body");
-    var svgSelection = bodySelection.append("svg")
-        .attr("width", width)
-        .attr("height", width);
-
-    var svg = d3.select("svg"),
-            margin = 20,
-            diameter = +svg.attr("width"),
-            g = svg.append("g").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-
-    var color = d3.scale.linear()
-        .domain([-1, 5])
-        .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
-        .interpolate(d3.interpolateHcl);
-
-    var pack = d3.pack()
-        .size([diameter - margin, diameter - margin])
-        .padding(2);
-
-    // Choose cityHierarchy as our source of data and make the circle sizes equal to request duration
-    var root = d3.hierarchy(cityHierarchy[0])
-              .sum(function(d) { return d.duration; })
-              .sort(function(a, b) { return b.start - a.start; });
-
-    var focus = root,
-        nodes = pack(root).descendants(),
-        view;
-
-    var duration = 100;
-    var delay = 0;
-
-    var circle = g.selectAll("circle")
-        .data(nodes)
-        .enter().append("circle")
-            .attr("class", function(d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
-            .style("fill", function(d) { return d.children ? color(d.depth) : null; })
-            .on("click", function(d) { if (focus !== d) zoom(d), d3.event.stopPropagation(); })
-        .transition()
-           .duration(duration)
-           .delay(function(d, i) {delay = i * 7; return delay;})
-           .attr('transform', function(d) { return 'translate(' + (d.x - width/2) + ',' + (d.y - width/2) + ')'; })
-           .attr('r', function(d) { return d.r; })
-        .exit()
-           .transition()
-           .duration(duration + delay)
-           .style('opacity', 0)
-           .remove();
-
-    var text = g.selectAll("text")
-        .data(nodes)
-        .enter().append("text")
-            .attr("class", "label")
-            .style("fill", "white")
-            .style("fill-opacity", function(d) { return d.parent === root ? 1 : 0; })
-            .style("display", function(d) { return d.parent === root ? "inline" : "none"; })
-            .text(function(d) { return d.data.name; });
-
-    var node = g.selectAll("circle,text");
-
-    svg
-        .style("background", color(-1))
-        .on("click", function() { zoom(root); });
-
-    zoomTo([root.x, root.y, root.r * 2 + margin]);
-
-    function zoom(d) {
-        var focus0 = focus; focus = d;
-
-        var transition = d3.transition()
-            .duration(d3.event.altKey ? 7500 : 750)
-            .tween("zoom", function(d) {
-                var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
-                return function(t) { zoomTo(i(t)); };
-            });
-
-        transition.selectAll("text")
-            .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
-                .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
-                .each("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
-                .each("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });
+    if (newString in featureIndices) {
+        currGroup = data[featureIndices[newString]];
+        if (currGroup["market"] == feature1) {
+            if (currGroup["segment"] == feature2) {
+                currGroup["value"] = currGroup["value"] + feature3
+            } else {
+                console.log("this shouldn't happen");
+                return;
+            }
+        } else {
+            console.log("this shouldn't happen");
+            return;
         }
-
-    function zoomTo(v) {
-        var k = diameter / v[2]; view = v;
-        node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
-        circle.attr("r", function(d) { return d.r * k; });
-    }
-}
-
-
-// This is our main function that calls all the helper functions
-function updateTraffic(error, json, div, dimensionIndex) {
-    if (error) {
-        readout(error);
     } else {
-        var now = new Date().getTime();
-        div.node().stream = {dimension: dimensionIndex, start: now, wall: now, sleep: 0, first: json[0][0], last: json[json.length-1][0], index: 0, data: json};
-        stream = div.node().stream;
-
-        d3.selectAll("svg").remove();
-
-        formatData(json);
-        setInterval(initTraffic(div, json), 10000);
-
+        console.log("this shouldn't happen");
+        return;
     }
 }
 
+
+/*
+ * Build the viewport where the chart is created.
+ * This only gets called once.
+ */
+function buildView(div) {
+    nest = d3.nest()
+        .key(function(d) { return d.market; })
+        .key(function(d) { return d.segment; });
+
+    treemap = d3.layout.treemap()
+        .mode("slice-dice")
+        .size([width, height])
+        .children(function(d) { return d.values; })
+        .sort(null);
+
+    svg = d3.select("body").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .style("margin-left", -margin.left + "px")
+    
+    svg.append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+        .datum({values: nest.entries(data)})
+        .call(chart);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + treemap.size()[1] + ")")
+        .call(d3.svg.axis().scale(d3.scale.linear().range([0, treemap.size()[0]])).tickFormat(d3.format("%")));
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(d3.svg.axis().scale(d3.scale.linear().range([treemap.size()[1], 0])).tickFormat(d3.format("%")).orient("left"));
+}
+
+
+function chart(selection) {
+    selection.each(function() {
+
+        cell = d3.select(this).selectAll("g.cell")
+            .data(treemap.nodes);
+
+        cellEnter = cell.enter().append("g")
+            .attr("class", "cell")
+            .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+        cellEnter.filter(function(d) { return d.depth > 2; }).append("rect")
+            .style("fill", function(d) { return d.children ? null : color(d.market); });
+
+        cellEnter.append("title");
+
+        d3.transition(cell)
+            .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+          .select("rect")
+            .attr("width", function(d) { return d.dx; })
+            .attr("height", function(d) { return d.dy; });
+
+        /*cell.select("title")
+            .text(function(d) { return d.children ? null : title(d); });*/
+
+        d3.transition(cell.exit())
+            .attr("width", 1e-6)
+            .attr("height", 1e-6)
+            .remove();
+    });
+}
+
+function title(d) {
+    return d.segment + ": " + d.parent.key + ": " + n(d.value);
+}
+
+// update the graph every 50 points
+function transition() {
+    svg.datum({values: nest.entries(data)})
+      .transition()
+      .duration(1000)
+      .call(chart);
+}
+
+
+// This adds a chunk of pages to the hierarchy and then updates the view.  Meant to
+// be called on a timer.
+function updateTraffic(json) {
+    json1 = json;
+    lim = Math.min(index + 50, json.length-1)
+    while (index < lim) {
+        addPage(json[index++])
+    }
+    if (lim < json.length-1) transition();
+}

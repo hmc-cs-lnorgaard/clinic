@@ -1,22 +1,35 @@
 - content_for(:head) do
-  %script{type: 'text/javascript', src: "/charts/timeseries.js"}
   %script{type: 'text/javascript', src: "/charts/new5.js"}
+  %script{src: "https://d3js.org/d3.v3.min.js"}
   %script{src: "https://d3js.org/d3-hierarchy.v1.min.js"}
   %script{src: "http://d3js.org/d3.interpolate-zoom.v0.min.js"}
   :css
-    #logTransformGroup, #apdexTGroup, #densityGroup, #filterGroup, #attrGroup {
+    # logTransformGroup, #densityGroup, #apdexTGroup, #filterGroup, #attrGroup {
       display: none;
     }
-
-
+    circle {
+      fill: rgb(31, 119, 180);
+      fill-opacity: .25;
+      stroke: rgb(31, 119, 180);
+      stroke-width: 1px;
+    }
+    .leaf circle {
+      fill: #ff7f0e;
+      fill-opacity: 1;
+    }
+    text {
+      font: 10px sans-serif;
+      text-anchor: middle;
+    }
   :javascript
+    // Many of these are artifacts of the old animation.  Not sure which are referenced.
     $data.file = "#{@file}";
     $data.width = 800;
     $data.height = 200;
     $data.yMax = #{@y_max};
     $data.density = 30;
     $data.apdex_t = #{@apdex_t};
-    $data.measure = "frontend";
+    $data.measure = "duration";
     $data.filter = "#{@filter_label}";
     $data.primary_dim = "#{@primary_dim}";
     $data.dimensions = #{@dimensions.to_json};
@@ -25,19 +38,23 @@
 .row
   #display.span12
     %p#readout
-.row
-  #timeseries.span12
+    
 
 :javascript
-  initTraffic(d3.select("#display"));
+  
   $data.dispatch.on("reloadData.traffic", function(switchedFile)  {
-       d3.json("/data/filtered/"+$data.file + "?" +
-        "only=" + $data.only + "&" +
-        "filter=" + $data.filter, function(error, json) {
+       d3.json("/data/filtered/"+$data.file + "?only=" + $data.only + "&filter=" + $data.filter, function(error, json) {
          header = json.shift(); // remove the header row
          dimensionIndex = header.indexOf($data.primary_dim);
-         updateTraffic(error, json, d3.select("#display"), dimensionIndex);
+         var div = d3.select("#display");
+         setTimeout(function run() {
+            updateTraffic(json);
+            setTimeout(run, 1000);
+        }, 1000);
+
+         updateTraffic(json);
        });
   });
-  
+  initTraffic(d3.select("#display"));
+
   $data.dispatch.reloadData();

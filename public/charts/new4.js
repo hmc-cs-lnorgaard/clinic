@@ -1,226 +1,164 @@
 titles = {"epochtime":0,"timestamp":1,"duration":2,"name":3,"name.previous":4,"country":5,"city":6}
 numRequests = 0
 
+var displaySize = 700;
 // Settings for svg/d3 stuff
 var margin = $data.margin;
-var width = 700 - margin.left - margin.right;
-var height = 700 - margin.top - margin.bottom;
+var width = displaySize - margin.left - margin.right;
+var height = displaySize - margin.top - margin.bottom;
 var padding = 20;
 
-// Our data structures
-var cityHierarchy = [];
-var nodesByCity = {};
-var stream;
-var index = 0;
+var diameter;
 
 
+var index = 1; // start at the record after the header
+
+var rootNode = circleNode("Application");
+
+// Serial id assigned to each event
+var serialId = 1000;
+
+// Changed this so it's only called once.
 function initTraffic(div, json) {
-    console.log("here");
-    if (stream == null) {
-        console.log("null");
-        return;
-    }
-    console.log("hi");
-    formatData(json);
-    drawCircles(div);
-    index = index + 100;
+    buildView(div);
 }
 
-// Given a list of requests from the same city, add them to the hierarchy
-function addDataToHierarchy(dict) {
-    var name = dict["name"];
-    var children = dict["children"]; 
-    var data = nodesByCity[name];
-    for (var i = 0; i < data.length; i++) {
-        var d = data[i];
-        var newEntry = {};
-        for (t in titles) {
-            newEntry[t] = d[titles[t]];
-        }
-        newEntry["name"] = (newEntry["duration"]).toString();
-        children.push(newEntry);
+function addPage(page) {
+    var pageNode = {
+        id: String(serialId++),
+        country: page[titles["country"]],
+        city: page[titles["city"]],
+        timestamp: page[titles["epochtime"]],
+        duration: page[titles["duration"]]
     }
+
+    cityNode = rootNode.child(pageNode.country).child(pageNode.city);
+    // Not showing page level right now.
+    //cityNode.children.unshift(pageNode);
+
 }
 
-
-/** The main function. 
-    1) Loops through the data from the json file once to create the necessary data structures.
-    2) Loops through again to again to create the hierarchy for D3 visualization
-*/
-function formatData(newData) {
-
-    // Reset data structures
-    cityHierarchy = [];
-    nodesByCity = {};
-
-    numRequests = newData.length
-    console.log("num requests = ", numRequests);
-
-    // Initialize the hierarchy
-    cityHierarchy = [];
-    cityHierarchy[0] = {};
-    cityHierarchy[0]["name"] = "app";
-    cityHierarchy[0]["children"] = [];
-    var currentLevel = cityHierarchy[0]["children"];
-
-    // Create a list of all countries, create a list of all cities, and create a dictionary
-    // with cities as keys and countries as values
-    var allCountries = [];
-    var allCities = [];
-    var cityCountryDict = {};
-
-    for (i = index; i < index + newData.length/30; i++) {
-        var city = newData[i][titles["city"]]
-        var country = newData[i][titles["country"]]
-
-        // List of countries
-        if (allCountries.indexOf(country) <= -1) {
-            allCountries.push(country);
+function circleNode(name) {
+    var n = {
+        id: name,
+        children: null
+    };
+    // Object method to add a child, creating it if it doesn't exist
+    n.child = function(id){
+        if (n.children == null) {
+            n.children = [];
         }
-
-        // List of cities
-        if (allCities.indexOf(city) <= -1) {
-            allCities.push(city);
+        for (i = 0; i < n.children.length; i++) {
+            if (n.children[i].id == id)
+                return n.children[i];
         }
-
-        // Dictionary (key=city, value=country)
-        var currentKeys = Object.keys(cityCountryDict)
-        if ((city in currentKeys) == false) {
-            cityCountryDict[city] = country
-        }
-
-        // Dictionary (key=city, value=list of requests from that city)
-        if (nodesByCity[city] == null) {
-            nodesByCity[city] = [];
-            nodesByCity[city].push(newData[i]);
-        } else {
-            nodesByCity[city].push(newData[i]);
-        }
-    }
-
-    // Add the countries to the hierarchy
-    for (co = 0; co < allCountries.length; co++) {
-        currCountry = allCountries[co]
-        var newDict = {};
-        newDict["name"] = currCountry;
-        newDict["children"] = [];
-        innerLevel = newDict["children"]
-
-        // Add the cities to the hierarchy
-        for (ci = 0; ci < allCities.length; ci++) {
-            city = allCities[ci]
-            country = cityCountryDict[city]
-            if (country == currCountry) {
-                var newDict2 = {};
-                newDict2["name"] = city;
-                newDict2["children"] = [];
-
-                // Add individual data points to the hierarchy 
-                addDataToHierarchy(newDict2)
-                innerLevel.push(newDict2);
-            }
-        }
-        currentLevel.push(newDict);
-    }
+        var newNode = circleNode(id);
+        n.children.unshift(newNode);
+        return newNode;
+    };
+    return n;
 }
 
 
+/*
+ * Build the viewport where the circles are packed.
+ * This only gets called once.
+ */
+function buildView(div) {
 
-function drawCircles(div) {
+    var viewport = d3.select("#display").node().getClientRects()[0];
+    width = viewport.width;
+    height = viewport.width;
 
-    var bodySelection = d3.select("body");
-    var svgSelection = bodySelection.append("svg")
+    var svg = d3.select("#display").append("svg")
         .attr("width", width)
-        .attr("height", width);
+        .attr("height", height);
 
-    var svg = d3.select("svg"),
-            margin = 20,
-            diameter = +svg.attr("width"),
-            g = svg.append("g").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    svg.append("g")
+        .attr("id", "top")
+        .attr("transform", "translate(" + $data.margin.left + "," + $data.margin.top + ")");
 
     var color = d3.scale.linear()
         .domain([-1, 5])
         .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
         .interpolate(d3.interpolateHcl);
+}
 
-    var pack = d3.pack()
-        .size([diameter - margin, diameter - margin])
+function updateView() {
+
+    // TODO these should be moved to initialization scope
+
+    
+
+    var packCircles = d3.pack()
+        .size([width - $data.margin.left - $data.margin.right, height - $data.margin.left - $data.margin.right])
         .padding(2);
 
     // Choose cityHierarchy as our source of data and make the circle sizes equal to request duration
-    var root = d3.hierarchy(cityHierarchy[0])
-              .sum(function(d) { return d.duration; })
-              .sort(function(a, b) { return b.start - a.start; });
+    var root = d3.hierarchy(rootNode)
+        .sum(function (d) {
+            return d.duration ? d.duration : 1;
+        })
+        .sort(function (a, b) {
+            return a.data.id == b.data.id ? 0 : (a.data.id < b.data.id ? 1 : -1)
+        });
 
-    var focus = root,
-        nodes = pack(root).descendants(),
-        view;
+    var nodes = packCircles(root).descendants();
 
-    var circle = g.selectAll("circle")
-        .data(nodes)
-        .enter().append("circle")
-            .attr("class", function(d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
-            .style("fill", function(d) { return d.children ? color(d.depth) : null; })
-            .on("click", function(d) { if (focus !== d) zoom(d), d3.event.stopPropagation(); });
 
-    var text = g.selectAll("text")
-        .data(nodes)
-        .enter().append("text")
-            .attr("class", "label")
-            .style("fill", "white")
-            .style("fill-opacity", function(d) { return d.parent === root ? 1 : 0; })
-            .style("display", function(d) { return d.parent === root ? "inline" : "none"; })
-            .text(function(d) { return d.data.name; });
+    /*
+     * For now all this does is draw countries and cities that have requests.  It doesn't show pages,
+     * and it doesn't remove anything.  I just wanted to see if I could get the animation working.
+     *
+     * To simplify things I also removed the zoom feature for now.
+     */
 
-    var node = g.selectAll("circle,text");
+    // This createa a G element that will have a single translation and contain the circle and text elements.
+    // Mostly followed the circle packing example.
+    // This also uses a stable ID which simplifies things.
+    var nodesSelection = d3.select("g#top").selectAll("g.node").data(nodes, function (d) {
+        return d.data.id;
+    });
 
-    svg
-        .style("background", color(-1))
-        .on("click", function() { zoom(root); });
+    // This updates existing nodes, moving them to a new location
+    nodesSelection
+        .attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
 
-    zoomTo([root.x, root.y, root.r * 2 + margin]);
+    // This updates the radius of existing nodes
+    nodesSelection.select("circle").attr("r", function (d) {
+        return d.r;
+    });
 
-    function zoom(d) {
-        var focus0 = focus; focus = d;
+    // This is the enter selection which is the code to add new g elements
+    var newNodes = nodesSelection.enter()
+        .append("g")
+        .attr("class", function (d) {
+            return d.children ? "node" : "node leaf";
+        })
+        .attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    newNodes.append("circle").attr("r", function (d) {
+        return d.r;
+    });
+    newNodes.append("text").text(function (d) {
+        if (d.r > 25) return d.data.id;
+    });
 
-        var transition = d3.transition()
-            .duration(d3.event.altKey ? 7500 : 750)
-            .tween("zoom", function(d) {
-                var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
-                return function(t) { zoomTo(i(t)); };
-            });
+    // We aren't removing anything from the hierarchy yet so this has no effect.
+    nodesSelection.exit().remove();
 
-        transition.selectAll("text")
-            .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
-                .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
-                .each("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
-                .each("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });
-        }
-
-    function zoomTo(v) {
-        var k = diameter / v[2]; view = v;
-        node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
-        circle.attr("r", function(d) { return d.r * k; });
-    }
 }
 
 
-// This is our main function that calls all the helper functions
-function updateTraffic(error, json, div, dimensionIndex) {
-    if (error) {
-        readout(error);
-    } else {
-        var now = new Date().getTime();
-        div.node().stream = {dimension: dimensionIndex, start: now, wall: now, sleep: 0, first: json[0][0], last: json[json.length-1][0], index: 0, data: json};
-        stream = div.node().stream;
-
-        d3.selectAll("svg").remove();
-
-        setTimeout(function run() {
-            initTraffic(div, json);
-            setTimeout(run, 1000);
-        }, 1000);
-
+// This adds a chunk of pages to the hierarchy and then updates the view.  Meant to
+// be called on a timer.
+function updateTraffic(json) {
+    lim = Math.min(index + 50, json.length - 1)
+    while (index < lim) {
+        addPage(json[index++])
     }
+    if (lim < json.length -1) updateView();
 }
-
