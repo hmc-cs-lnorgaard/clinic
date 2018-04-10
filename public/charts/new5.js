@@ -3,12 +3,9 @@ numRequests = 0
 
 // Default size & coloring settings from Marimekko demo: https://www.jasondavies.com/mekko/
 var margin = {top: 10, right: 20, bottom: 30, left: 60},
-    width = 1200 - margin.left - margin.right,
+    width = 1000 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom,
     color = d3.scale.category20b(),
-    /**color = d3.scale.ordinal()
-        .domain(["1450"])
-        .range(["#1a9850", "#66bd63", "#a6d96a","#d9ef8b","#ffffbf","#fee08b","#fdae61","#f46d43","#d73027"]),*/
     n = d3.format(",.0f"),
     p = d3.format("%");
 
@@ -83,6 +80,40 @@ function addPage(page) {
     }
 }
 
+// Remove an entry that is out of scope
+function removePage(page) {
+
+    // Make sure none of the feature values are null
+    var feature1 = page[titles["name"]];
+    if (feature1 == null) {feature1 = "null";}
+    var feature2 = page[titles["country"]];
+    if (feature2 == null) {feature2 = "null";}
+    var feature3 = page[titles["duration"]];
+    if (feature3 == null) {return;}
+    
+    var newString = feature1.concat(feature2);
+
+    if (newString in featureIndices) {
+        currGroup = data[featureIndices[newString]];
+        if (currGroup["market"] == feature1) {
+            if (currGroup["segment"] == feature2) {
+                console.log("before: ", currGroup["value"]);
+                currGroup["value"] = currGroup["value"] - feature3;
+                console.log("after: ", currGroup["value"]);
+            } else {
+                console.log("this shouldn't happen");
+                return;
+            }
+        } else {
+            console.log("this shouldn't happen");
+            return;
+        }
+    } else {
+        console.log("this shouldn't happen");
+        return;
+    }
+}
+
 
 /*
  * Build the viewport where the chart is created.
@@ -130,7 +161,7 @@ function chart(selection) {
             .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
         cellEnter.filter(function(d) { return d.depth > 2; }).append("rect")
-            .style("fill", function(d) { return d.children ? null : color(d.segment); });
+            .style("fill", function(d) { return d.children ? null : color(d.market); });
 
         cellEnter.append("title");
 
@@ -169,7 +200,12 @@ function updateTraffic(json) {
     json1 = json;
     lim = Math.min(index + 50, json.length-1)
     while (index < lim) {
-        addPage(json[index++])
+        addPage(json[index++]);
+        pastIndex = index - 100; // show 100 points at a time
+        if (pastIndex >= 0) {
+            removePage(json[pastIndex]);
+        }
     }
+    console.log(currGroup = data[featureIndices["Controller/applications/showUS"]])
     if (lim < json.length-1) transition();
 }
