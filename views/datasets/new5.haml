@@ -8,18 +8,8 @@
       display: none;
     }
     body {
-        overflow: hidden;
-        margin: 0;
         font-size: 12px;
         font-family: "Helvetica Neue", Helvetica;
-    }
-
-    .footer {
-        z-index: 1;
-        display: block;
-        font-size: 26px;
-        font-weight: 200;
-        text-shadow: 0 1px 0 #fff;
     }
 
     svg {
@@ -27,21 +17,16 @@
     }
 
     rect {
-        pointer-events: all;
-        cursor: pointer;
         stroke: #EEEEEE;
+    }
+
+    .text, text {
+      text-overflow: ellipsis;
     }
 
     .chart {
         display: block;
         margin: auto;
-    }
-
-    .parent .label {
-        color: #FFFFFF;
-        text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
-        -webkit-text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
-        -moz-text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
     }
 
     .labelbody {
@@ -56,6 +41,7 @@
         text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
         -webkit-text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
         -moz-text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
+        background: transparent;
     }
 
     .child .label {
@@ -66,7 +52,10 @@
 
     .cell {
         font-size: 11px;
-        cursor: pointer
+    }
+
+    .foreignObject {
+        text-overflow: ellipsis;
     }
 
 

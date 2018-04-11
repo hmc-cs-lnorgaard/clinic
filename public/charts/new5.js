@@ -220,6 +220,28 @@ function chart(selection) {
         cellEnter.filter(function(d) { return d.depth > 2; }).append("rect")
             .style("fill", function(d) { return d.children ? null : color(d.market); });
 
+        // Text labels
+        cellEnter.append('foreignObject')
+            .attr("transform", function(d) { return "translate(" + 0 + "," + -62 + ")"; })
+            .attr("class", "foreignObject")
+            .attr("width", function(d) { return d.dx; })
+            .attr("height", function(d) { return d.dy; })
+            .append("xhtml:body")
+            .attr("class", "labelbody")
+            .append("div")
+            .attr("class", "label")
+            .text(function(d) { return d.children ? null : title(d); });
+
+        d3.transition(cell).select(".foreignObject")
+            .attr("width", function(d) {
+                return Math.max(0.01, d.dx);
+            })
+            .attr("height", function(d) {
+                return Math.max(0.01, d.dy);
+            })
+            .select(".labelbody .label")
+            .text(function(d) { return d.children ? null : title(d); });
+
         cellEnter.append("title");
 
         d3.transition(cell)
@@ -239,7 +261,13 @@ function chart(selection) {
 }
 
 function title(d) {
-    return d.market + ", " + d.segment + ", " + d.value;
+    if (d.dx > 100) {
+        if (d.dy > 50) {
+            return x + ": " + d.market + "\n" + y + ": " + d.segment + "\n" + "duration: " + ": " + d.value;
+        }
+    }
+    return "";
+    
 }
 
 // update the graph every 50 points
