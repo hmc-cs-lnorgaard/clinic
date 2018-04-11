@@ -17,9 +17,69 @@ var featureIndices = {};
 var notInitialized = true;
 var json1 = null;
 
+var x = "name";
+var y = "country";
+
+var selectedX = titles[x];
+var selectedY = titles[y];
+
+function restartEverything() {
+    d3.select("svg").remove();
+    index = 0; // start at the record after the header
+    serialId = 1000; // Serial id assigned to each event
+    data = []; // where we are keeping the list of dictionaries (our data)
+    featureIndices = {};
+    notInitialized = true;
+    buildView();
+}
+
+function addSelects() {
+    // Create 2 dropdowns that change the x and y axes
+    var text1 = document.createTextNode("X-axis");
+    var newDiv=document.createElement('div');
+    var text2 = document.createTextNode("Y-axis");
+    var newDiv2=document.createElement('div');
+    
+    var html = '<select id="xAxis">', html2 = '<select id="yAxis">', i;
+    for (i = 0; i < Object.keys(titles).length; i++) {
+        var feature = Object.keys(titles)[i]
+        html += "<option value='"+feature+"'>"+feature+"</option>";
+        html2 += "<option value='"+feature+"'>"+feature+"</option>";
+    }
+    html += '</select>';
+    html2 += '</select>';
+    newDiv.innerHTML= html;
+    newDiv2.innerHTML= html2;
+    document.getElementById("feature").appendChild(text1);
+    document.getElementById("feature").appendChild(newDiv);
+    document.getElementById("feature").appendChild(text2);
+    document.getElementById("feature").appendChild(newDiv2);
+
+    // Make the dropdowns default to "name" and "country"
+    document.getElementById("xAxis").value = x;
+    document.getElementById("yAxis").value = y;
+
+    // Change the chart when x is changed in the dropdown
+    document.getElementById("xAxis").onchange = function() {
+        x = document.getElementById("xAxis").value;
+        selectedX = titles[x];
+        restartEverything();
+        return false;
+    };
+
+    // Change the chart when y is changed in the dropdown
+    document.getElementById("yAxis").onchange = function() {
+        y = document.getElementById("yAxis").value;
+        selectedY = titles[y];
+        restartEverything();
+        return false;
+    };
+}
+
 
 // Changed this so it's only called once. 
 function initTraffic(div, json) {
+    addSelects();
     buildView(div);
 }
 
@@ -27,9 +87,9 @@ function initTraffic(div, json) {
 function addPage(page) {
     if (notInitialized) {
         for (i=0; i<json1.length; i++) {
-            var feature1 = json1[i][titles["name"]];
+            var feature1 = json1[i][selectedX];
             if (feature1 == null) {feature1 = "null";}
-            var feature2 = json1[i][titles["country"]];
+            var feature2 = json1[i][selectedY];
             if (feature2 == null) {feature2 = "null";}
             
             var newString = feature1.concat(feature2);
@@ -52,9 +112,9 @@ function addPage(page) {
     }
 
     // Make sure none of the feature values are null
-    var feature1 = page[titles["name"]];
+    var feature1 = page[selectedX];
     if (feature1 == null) {feature1 = "null";}
-    var feature2 = page[titles["country"]];
+    var feature2 = page[selectedY];
     if (feature2 == null) {feature2 = "null";}
     var feature3 = page[titles["duration"]];
     if (feature3 == null) {return;}
@@ -82,11 +142,10 @@ function addPage(page) {
 
 // Remove an entry that is out of scope
 function removePage(page) {
-
     // Make sure none of the feature values are null
-    var feature1 = page[titles["name"]];
+    var feature1 = page[selectedX];
     if (feature1 == null) {feature1 = "null";}
-    var feature2 = page[titles["country"]];
+    var feature2 = page[selectedY];
     if (feature2 == null) {feature2 = "null";}
     var feature3 = page[titles["duration"]];
     if (feature3 == null) {return;}
@@ -97,9 +156,7 @@ function removePage(page) {
         currGroup = data[featureIndices[newString]];
         if (currGroup["market"] == feature1) {
             if (currGroup["segment"] == feature2) {
-                console.log("before: ", currGroup["value"]);
                 currGroup["value"] = currGroup["value"] - feature3;
-                console.log("after: ", currGroup["value"]);
             } else {
                 console.log("this shouldn't happen");
                 return;
@@ -206,6 +263,7 @@ function updateTraffic(json) {
             removePage(json[pastIndex]);
         }
     }
-    console.log(currGroup = data[featureIndices["Controller/applications/showUS"]])
-    if (lim < json.length-1) transition();
+    if (lim < json.length-1) {
+        transition();
+    }
 }
